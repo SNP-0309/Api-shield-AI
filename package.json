@@ -1,0 +1,10 @@
+{
+  "name": "api-shield",
+  "version": "1.0.0",
+  "description": "API Shield - production behavioral API gateway",
+  "scripts": {
+    "ml": "cd ml-service && python app.py",
+    "backend": "cd backend && npm run dev",
+    "frontend": "cd frontend && npm run dev"
+  }
+}

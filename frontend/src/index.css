@@ -1,0 +1,121 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+    --page-bg: #f4f6fa;
+    --surface: #ffffff;
+    --surface-soft: #f8f9fc;
+    --line: #e6e9f0;
+    --ink: #172033;
+    --muted: #7c8495;
+    --primary: #5b4bd8;
+    --teal: #22bfc3;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    background-color: var(--page-bg);
+    color: var(--ink);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+/* Quiet, light analytics canvas */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #f4f6fa;
+}
+::-webkit-scrollbar-thumb {
+  background: #d9deea;
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #c3c9d7;
+}
+
+/* Shared visual language for the existing Tailwind screens. */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.86);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--line);
+}
+
+.bento-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 0.9rem;
+  box-shadow: 0 8px 24px rgba(30, 43, 75, 0.05);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.bento-card:hover {
+  border-color: #cfd5e2;
+  box-shadow: 0 12px 28px rgba(30, 43, 75, 0.08);
+}
+
+.radar-grid {
+  background-size: 32px 32px;
+  background-image: 
+    linear-gradient(to right, rgba(91, 75, 216, 0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(91, 75, 216, 0.06) 1px, transparent 1px);
+}
+
+/* Translate the original dark utility tokens into the light reference system. */
+[class*="bg-[#080C14]"] { background-color: #f4f6fa !important; }
+[class*="bg-[#090D16]"] { background-color: #fbfcfe !important; }
+[class*="bg-[#0A0E1A]"] { background-color: #ffffff !important; }
+[class*="bg-[#0E1422]"] { background-color: #ffffff !important; }
+[class*="bg-[#111827]"] { background-color: #f8f9fc !important; }
+[class*="bg-[#121A2D]"] { background-color: #f5f3ff !important; }
+[class*="bg-[#161F32]"] { background-color: #f7f8fc !important; }
+[class*="bg-[#1A2438]"] { background-color: #eef0fa !important; }
+[class*="bg-slate-900"] { background-color: #f7f8fb !important; }
+[class*="bg-slate-800"] { background-color: #f1f3f7 !important; }
+[class*="bg-slate-700"] { background-color: #e6eaf1 !important; }
+
+[class*="border-[#1E293B]"] { border-color: #e6e9f0 !important; }
+[class*="border-[#1F2937]"] { border-color: #e6e9f0 !important; }
+[class*="border-[#2D3748]"] { border-color: #dce1eb !important; }
+[class*="border-[#2D3D58]"] { border-color: #cfd5e2 !important; }
+
+[class*="text-white"] { color: #172033 !important; }
+[class*="bg-indigo-600"][class*="text-white"],
+[class*="bg-indigo-500"][class*="text-white"] { color: #ffffff !important; }
+[class*="text-slate-200"] { color: #42506a !important; }
+[class*="text-slate-300"] { color: #657087 !important; }
+[class*="text-slate-400"] { color: #7c8495 !important; }
+[class*="text-slate-500"] { color: #9aa3b4 !important; }
+[class*="text-indigo-300"], [class*="text-indigo-400"] { color: #5b4bd8 !important; }
+[class*="text-cyan-400"] { color: #0a9ea4 !important; }
+[class*="text-emerald-400"] { color: #0f9f76 !important; }
+[class*="text-orange-400"] { color: #c26a22 !important; }
+[class*="text-rose-400"] { color: #d24762 !important; }
+
+/* Make card-like dark surfaces feel like the reference's calm white panels. */
+[class*="rounded-2xl"][class*="border"],
+[class*="rounded-xl"][class*="border"] {
+  box-shadow: 0 8px 24px rgba(30, 43, 75, 0.045);
+}
+
+[class*="shadow-2xl"], [class*="shadow-xl"], [class*="shadow-lg"] {
+  box-shadow: 0 8px 24px rgba(30, 43, 75, 0.07) !important;
+}
+
+input, select, textarea {
+  color: var(--ink);
+}
+
+input::placeholder, textarea::placeholder {
+  color: #a1a9b8;
+}
