@@ -1,8 +1,41 @@
 import { redisService } from '../services/redisService.js';
 import { behaviorService } from '../services/behaviorService.js';
 import { mlService } from '../services/mlService.js';
+import { validateUpstreamUrl } from '../utils/upstreamUrl.js';
 
 export const dashboardController = {
+  /**
+   * GET /security/upstream
+   */
+  async getUpstream(req, res) {
+    try {
+      const url = await redisService.getUpstreamUrl();
+      res.json({
+        configured: Boolean(url),
+        url,
+        source: url && url === process.env.UPSTREAM_URL ? 'environment' : url ? 'dashboard' : null
+      });
+    } catch (err) {
+      res.status(500).json({ error: 'Failed to retrieve upstream configuration' });
+    }
+  },
+
+  /**
+   * PUT /security/upstream
+   */
+  async setUpstream(req, res) {
+    try {
+      const url = validateUpstreamUrl(req.body?.url);
+      await redisService.setUpstreamUrl(url);
+      res.json({ configured: true, url, source: 'dashboard' });
+    } catch (err) {
+      const isValidationError = /required|complete URL|must use|Credentials|parameters|Private|not in/i.test(err.message);
+      res.status(isValidationError ? 400 : 503).json({
+        error: isValidationError ? err.message : 'Unable to save upstream configuration'
+      });
+    }
+  },
+
   /**
    * GET /security/overview
    */

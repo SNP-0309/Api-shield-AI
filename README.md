@@ -66,7 +66,7 @@ Copy `.env.example` to `.env` and replace every placeholder with deployment valu
 
 Important variables:
 
-- `UPSTREAM_URL`: base URL for the API that receives `/proxy/*` requests.
+- `UPSTREAM_URL`: optional startup URL for the API that receives `/proxy/*` requests. It can also be set or changed at runtime from **Settings → Protected Application**.
 - `REDIS_URL`: shared Redis connection string. Redis is required in production.
 - `SENTINEL_API_KEYS`: comma-separated client keys accepted by `/api/*` and `/proxy/*`.
 - `SENTINEL_ADMIN_API_KEY`: key accepted by the security dashboard endpoints.
@@ -74,6 +74,7 @@ Important variables:
 - `TRUST_PROXY`: set to the number of trusted reverse-proxy hops when deployed behind a load balancer.
 - `SECURITY_FAIL_OPEN`: leave `false` in production so an unavailable telemetry dependency does not silently bypass enforcement.
 - `ALLOW_IN_MEMORY_FALLBACK`: keep `false` in production. It is only for local development without Redis.
+- `UPSTREAM_ALLOWED_HOSTS`: optional comma-separated allowlist of hostnames that may be selected from the dashboard.
 
 API keys should be long random values and should normally be issued and rotated by an identity or secrets system. The dashboard key is sent to the browser by the frontend build; for a multi-user deployment, put the dashboard behind your SSO or an authenticated reverse proxy instead of treating a browser key as a secret.
 
@@ -81,7 +82,7 @@ API keys should be long random values and should normally be issued and rotated 
 
 ```bash
 copy .env.example .env
-# edit .env: set keys, CORS_ORIGINS, and UPSTREAM_URL
+# edit .env: set keys and CORS_ORIGINS; UPSTREAM_URL is optional if you will set it in the dashboard
 docker compose up --build
 ```
 

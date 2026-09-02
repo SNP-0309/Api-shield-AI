@@ -43,6 +43,16 @@ export const securityApi = {
   getHealth: async () => {
     const res = await api.get('/health');
     return res.data;
+  },
+
+  getUpstream: async () => {
+    const res = await api.get('/security/upstream');
+    return res.data;
+  },
+
+  setUpstream: async (url) => {
+    const res = await api.put('/security/upstream', { url });
+    return res.data;
   }
 };
 

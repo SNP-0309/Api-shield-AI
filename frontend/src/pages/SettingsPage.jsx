@@ -1,5 +1,6 @@
-import React from 'react';
-import { Settings as SettingsIcon, Server, Database, Cpu, Sliders, ShieldCheck, Code2 } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Settings as SettingsIcon, Server, Database, Cpu, Sliders, ShieldCheck, Code2, Globe2, Save, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { securityApi } from '../services/api';
 
 function ServiceCard({ icon: Icon, label, detail, online, status }) {
   return (
@@ -19,6 +20,35 @@ function ServiceCard({ icon: Icon, label, detail, online, status }) {
 
 export default function SettingsPage({ overview }) {
   const backendUrl = import.meta.env.VITE_BACKEND_URL || window.location.origin;
+  const [upstreamUrl, setUpstreamUrl] = useState('');
+  const [upstreamSource, setUpstreamSource] = useState(null);
+  const [saveState, setSaveState] = useState('idle');
+  const [saveMessage, setSaveMessage] = useState('');
+
+  useEffect(() => {
+    securityApi.getUpstream()
+      .then((data) => {
+        setUpstreamUrl(data.url || '');
+        setUpstreamSource(data.source || null);
+      })
+      .catch(() => setSaveMessage('Unable to load the current upstream URL.'));
+  }, []);
+
+  const handleSaveUpstream = async (event) => {
+    event.preventDefault();
+    setSaveState('saving');
+    setSaveMessage('');
+    try {
+      const data = await securityApi.setUpstream(upstreamUrl);
+      setUpstreamUrl(data.url);
+      setUpstreamSource(data.source);
+      setSaveState('saved');
+      setSaveMessage('Saved. New proxy requests will use this URL immediately.');
+    } catch (error) {
+      setSaveState('error');
+      setSaveMessage(error.response?.data?.error || 'Unable to save this upstream URL.');
+    }
+  };
 
   return (
     <div className="p-8 space-y-8 max-w-[1200px] mx-auto">
@@ -33,6 +63,49 @@ export default function SettingsPage({ overview }) {
       </div>
 
       <div className="space-y-6">
+        <div className="p-6 rounded-2xl bg-[#0E1422] border border-[#1E293B] space-y-4">
+          <h3 className="text-sm font-bold text-white tracking-wide flex items-center gap-2">
+            <Globe2 className="w-4 h-4 text-indigo-400" />
+            <span>Protected Application</span>
+          </h3>
+          <p className="text-xs text-slate-400 leading-relaxed">
+            Add the deployed URL of the application you want to protect. API Shield will forward requests from <code className="font-mono text-indigo-300">/proxy/*</code> to this application after evaluating them.
+          </p>
+          <form onSubmit={handleSaveUpstream} className="flex flex-col sm:flex-row gap-3">
+            <input
+              value={upstreamUrl}
+              onChange={(event) => setUpstreamUrl(event.target.value)}
+              placeholder="https://your-resume-analyzer.com"
+              type="url"
+              required
+              className="flex-1 px-3 py-2.5 rounded-lg bg-[#0A0E1A] border border-[#1E293B] text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+            />
+            <button
+              type="submit"
+              disabled={saveState === 'saving'}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 text-sm font-semibold text-white transition-colors"
+            >
+              <Save className="w-4 h-4" />
+              {saveState === 'saving' ? 'Saving…' : 'Save URL'}
+            </button>
+          </form>
+          {upstreamSource && (
+            <div className="flex items-center gap-2 text-[11px] text-slate-400">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Active runtime target ({upstreamSource === 'dashboard' ? 'dashboard setting' : 'environment setting'})</span>
+            </div>
+          )}
+          {saveMessage && (
+            <div className={`flex items-center gap-2 text-[11px] ${saveState === 'error' ? 'text-rose-400' : 'text-emerald-400'}`}>
+              {saveState === 'error' ? <AlertTriangle className="w-3.5 h-3.5" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+              <span>{saveMessage}</span>
+            </div>
+          )}
+          <p className="text-[11px] text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+            Only allow trusted application URLs. Keep this dashboard behind authentication because this setting controls where gateway traffic is sent.
+          </p>
+        </div>
+
         <div className="p-6 rounded-2xl bg-[#0E1422] border border-[#1E293B] space-y-4">
           <h3 className="text-sm font-bold text-white tracking-wide flex items-center gap-2">
             <Server className="w-4 h-4 text-indigo-400" />
@@ -90,7 +163,7 @@ export default function SettingsPage({ overview }) {
             <span>Application Integration</span>
           </h3>
           <p className="text-xs text-slate-400 leading-relaxed">
-            Point <code className="font-mono text-indigo-300">UPSTREAM_URL</code> at your API and send client traffic through <code className="font-mono text-indigo-300">/proxy/*</code>. The gateway forwards the request after evaluation and records the real upstream response.
+            Add your application URL above and send client traffic through <code className="font-mono text-indigo-300">/proxy/*</code>. The gateway forwards the request after evaluation and records the real upstream response. Your users must open the API Shield gateway URL for requests to be inspected.
           </p>
           <pre className="p-4 rounded-xl bg-[#0A0E1A] border border-[#1E293B] overflow-x-auto text-[11px] text-slate-300"><code>{'curl -H "X-API-Key: $SENTINEL_API_KEY" \\\n  https://gateway.example.com/proxy/v1/resource'}</code></pre>
         </div>
@@ -98,4 +171,3 @@ export default function SettingsPage({ overview }) {
     </div>
   );
 }
-

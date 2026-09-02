@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { redisService } from '../services/redisService.js';
 
 const HOP_BY_HOP_HEADERS = new Set([
   'connection',
@@ -11,8 +12,8 @@ const HOP_BY_HOP_HEADERS = new Set([
   'upgrade'
 ]);
 
-function buildUpstreamUrl(req) {
-  const configuredBase = process.env.UPSTREAM_URL;
+async function buildUpstreamUrl(req) {
+  const configuredBase = await redisService.getUpstreamUrl();
   if (!configuredBase) return null;
 
   const base = new URL(configuredBase);
@@ -64,7 +65,7 @@ function requestBody(req) {
 
 export const proxyController = {
   async forward(req, res) {
-    const upstreamUrl = buildUpstreamUrl(req);
+    const upstreamUrl = await buildUpstreamUrl(req);
     if (!upstreamUrl) {
       return res.status(503).json({
         error: 'The gateway upstream is not configured',

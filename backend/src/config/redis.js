@@ -32,6 +32,12 @@ class InMemoryRedisStore {
     return this.strings.get(key) || null;
   }
 
+  async set(key, value) {
+    this._checkTtl(key);
+    this.strings.set(key, String(value));
+    return 'OK';
+  }
+
   async expire(key, seconds) {
     this.ttls.set(key, Date.now() + seconds * 1000);
     return 1;

@@ -3,6 +3,8 @@ import { dashboardController } from '../controllers/dashboardController.js';
 
 const router = Router();
 
+router.get('/upstream', dashboardController.getUpstream);
+router.put('/upstream', dashboardController.setUpstream);
 router.get('/overview', dashboardController.getOverview);
 router.get('/clients', dashboardController.getClients);
 router.get('/traffic', dashboardController.getTraffic);

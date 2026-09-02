@@ -1,7 +1,9 @@
 import { getRedisClient, isRedisOnline } from '../config/redis.js';
+import { validateUpstreamUrl } from '../utils/upstreamUrl.js';
 
 const WINDOW_TTL_SECONDS = 120;
 const MAX_HISTORY_LEN = 100;
+const UPSTREAM_URL_KEY = 'config:upstream_url';
 
 export const redisService = {
   /**
@@ -9,6 +11,28 @@ export const redisService = {
    */
   isOnline() {
     return isRedisOnline();
+  },
+
+  async getUpstreamUrl() {
+    const configuredFallback = String(process.env.UPSTREAM_URL || '').trim() || null;
+    const { client } = getRedisClient();
+    if (!client) return configuredFallback;
+
+    try {
+      const storedUrl = await client.get(UPSTREAM_URL_KEY);
+      const candidate = storedUrl || configuredFallback;
+      return candidate ? validateUpstreamUrl(candidate) : null;
+    } catch (err) {
+      console.error('[RedisService] getUpstreamUrl error:', err.message);
+      return null;
+    }
+  },
+
+  async setUpstreamUrl(url) {
+    const { client } = getRedisClient();
+    if (!client) throw new Error('Redis is unavailable; runtime configuration cannot be saved');
+    await client.set(UPSTREAM_URL_KEY, url);
+    return url;
   },
 
   /**

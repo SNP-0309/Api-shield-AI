@@ -10,7 +10,7 @@ async function startServer() {
   console.log('========================================================');
 
   if (process.env.NODE_ENV === 'production') {
-    const requiredProductionConfig = ['SENTINEL_API_KEYS', 'SENTINEL_ADMIN_API_KEY', 'UPSTREAM_URL'];
+    const requiredProductionConfig = ['SENTINEL_API_KEYS', 'SENTINEL_ADMIN_API_KEY'];
     const missing = requiredProductionConfig.filter((name) => !process.env[name]);
     if (missing.length > 0) {
       throw new Error(`Missing required production configuration: ${missing.join(', ')}`);
@@ -34,7 +34,7 @@ async function startServer() {
   }
 
   if (!process.env.UPSTREAM_URL) {
-    console.warn('[!] UPSTREAM_URL is not configured. /proxy routes will return 503 until an upstream API is supplied.');
+    console.warn('[!] No upstream API is configured. Set one in the dashboard or with UPSTREAM_URL before using /proxy routes.');
   }
 
   app.listen(PORT, () => {
