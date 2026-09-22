@@ -55,7 +55,7 @@ Behavior is calculated from actual observations in the previous 60 seconds: requ
 
 ## Services
 
-- `backend`: Node.js/Express gateway, API-key authentication, proxying, adaptive enforcement, and dashboard API.
+- `backend`: Node.js/Express gateway, client API-key authentication, dashboard JWT authentication, proxying, adaptive enforcement, and dashboard API.
 - `ml-service`: FastAPI inference service with the deployed Isolation Forest and scaler artifacts.
 - `redis`: Shared sliding-window telemetry, rate-limit state, event feed, and counters.
 - `frontend`: React operations dashboard backed by the `/security/*` endpoints.
@@ -69,26 +69,47 @@ Important variables:
 - `UPSTREAM_URL`: optional startup URL for the API that receives `/proxy/*` requests. It can also be set or changed at runtime from **Settings → Protected Application**.
 - `REDIS_URL`: shared Redis connection string. Redis is required in production.
 - `SENTINEL_API_KEYS`: comma-separated client keys accepted by `/api/*` and `/proxy/*`.
-- `SENTINEL_ADMIN_API_KEY`: key accepted by the security dashboard endpoints.
+- `MONGODB_SRV`: MongoDB Atlas SRV connection string used for dashboard accounts.
+- `JWT_SECRET`: random secret of at least 32 characters used to sign dashboard sessions.
+- `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`: Firebase Admin credentials used by the backend to verify Firebase ID tokens.
+- `FIREBASE_ADMIN_EMAILS`: comma-separated Firebase emails allowed to access the dashboard in production.
+- `JWT_EXPIRES_IN`: dashboard session lifetime, for example `8h`.
+- `ALLOW_DASHBOARD_SIGNUP`: set to `true` only for first-time account creation, then set it back to `false`.
+- `SENTINEL_ADMIN_API_KEY`: optional legacy key accepted by dashboard endpoints while migrating to JWT login.
 - `CORS_ORIGINS`: comma-separated browser origins allowed to call the gateway.
 - `TRUST_PROXY`: set to the number of trusted reverse-proxy hops when deployed behind a load balancer.
 - `SECURITY_FAIL_OPEN`: leave `false` in production so an unavailable telemetry dependency does not silently bypass enforcement.
 - `ALLOW_IN_MEMORY_FALLBACK`: keep `false` in production. It is only for local development without Redis.
 - `UPSTREAM_ALLOWED_HOSTS`: optional comma-separated allowlist of hostnames that may be selected from the dashboard.
 
-API keys should be long random values and should normally be issued and rotated by an identity or secrets system. The dashboard key is sent to the browser by the frontend build; for a multi-user deployment, put the dashboard behind your SSO or an authenticated reverse proxy instead of treating a browser key as a secret.
+API keys should be long random values and should normally be issued and rotated by a secrets system. Dashboard JWTs are stored in an HttpOnly cookie, so the browser does not receive the signing secret or a token in JavaScript storage.
+
+### Dashboard authentication
+
+1. Add `MONGODB_SRV` and a random `JWT_SECRET` to `.env`.
+2. Set `ALLOW_DASHBOARD_SIGNUP=true` and start the backend.
+3. Open `http://localhost:5173/register` (or the deployed frontend URL) and create the first admin account.
+4. Set `ALLOW_DASHBOARD_SIGNUP=false` and restart the backend.
+5. Use `/login` for future dashboard access. The dashboard sends the JWT cookie automatically with its requests.
+
+To use Firebase instead, enable Email/Password sign-in in Firebase Console, add the `VITE_FIREBASE_*` web configuration to `frontend/.env`, and add the Firebase Admin service-account values plus `FIREBASE_ADMIN_EMAILS` to `backend/.env`. Restart both services. The frontend then signs in with Firebase and the backend verifies the Firebase ID token before allowing dashboard access.
+
+For a separately deployed frontend and backend, set `AUTH_COOKIE_SAMESITE=none` and serve both sites over HTTPS. For local development, `lax` is the convenient default.
+
+If MongoDB is unavailable, dashboard login and registration return a clear `503` response. Client traffic through `/api/*` and `/proxy/*` still uses `SENTINEL_API_KEYS`; dashboard authentication does not replace application-user authentication in your upstream API. `SENTINEL_ADMIN_API_KEY` remains an explicit migration fallback, but client traffic keys cannot open the dashboard.
+
 
 ## Run with Docker Compose
 
 ```bash
 copy .env.example .env
-# edit .env: set keys and CORS_ORIGINS; UPSTREAM_URL is optional if you will set it in the dashboard
+# edit .env: set SENTINEL_API_KEYS, MONGODB_SRV, JWT_SECRET, and CORS_ORIGINS
 docker compose up --build
 ```
 
 Open the dashboard at `http://localhost:3000`. The gateway listens on `http://localhost:5000`; the ML service and Redis are internal stack dependencies.
 
-If the dashboard key is set in `.env`, Compose passes it as a frontend build argument. Do not use real production secrets in a publicly distributed frontend image.
+Compose passes the optional legacy dashboard key as a frontend build argument. Do not put JWT secrets or MongoDB credentials in frontend environment variables or a publicly distributed frontend image.
 
 ## Run locally
 
@@ -129,7 +150,11 @@ The training CSV must contain the 13 feature columns listed in `ml_model.py`. An
 ## Operational endpoints
 
 - `GET /health`: liveness check; no authentication required.
-- `GET /ready`: readiness check for Redis and ML dependencies.
+- `GET /ready`: readiness check for Redis, MongoDB, and ML dependencies.
+- `POST /auth/register`: create the first dashboard admin while signup is enabled.
+- `POST /auth/login`: create an HttpOnly JWT dashboard session.
+- `GET /auth/me`: check the current dashboard session.
+- `POST /auth/logout`: clear the dashboard session cookie.
 - `GET /api/ping`: authenticated and protected reference endpoint.
 - `ANY /proxy/*`: authenticated, evaluated, and forwarded to `UPSTREAM_URL`.
 - `GET /security/overview`: current aggregate telemetry.

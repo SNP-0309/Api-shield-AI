@@ -1,8 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Settings as SettingsIcon, Server, Database, Cpu, Sliders, ShieldCheck, Code2, Globe2, Save, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Settings as SettingsIcon, Server, Database, Cpu, Sliders, ShieldCheck, Globe2, Save, CheckCircle2, AlertTriangle, Package } from 'lucide-react';
 import { securityApi } from '../services/api';
 
-function ServiceCard({ icon: Icon, label, detail, online, status }) {
+function ServiceCard({ icon: Icon, label, detail, online, warning = false, status }) {
+  const statusColor = online ? 'text-emerald-400' : warning ? 'text-amber-500' : 'text-rose-400';
+  const dotColor = online ? 'bg-emerald-400' : warning ? 'bg-amber-400' : 'bg-rose-400';
+
   return (
     <div className="p-4 rounded-xl bg-[#0A0E1A] border border-[#1E293B] space-y-2">
       <div className="flex items-center gap-2 text-slate-300">
@@ -10,8 +13,8 @@ function ServiceCard({ icon: Icon, label, detail, online, status }) {
         <span className="text-xs font-semibold">{label}</span>
       </div>
       <div className="text-[11px] text-slate-500">{detail}</div>
-      <div className={`text-[11px] font-medium flex items-center gap-1.5 ${online ? 'text-emerald-400' : 'text-rose-400'}`}>
-        <span className={`w-1.5 h-1.5 rounded-full ${online ? 'bg-emerald-400' : 'bg-rose-400'}`} />
+      <div className={`text-[11px] font-medium flex items-center gap-1.5 ${statusColor}`}>
+        <span className={`w-1.5 h-1.5 rounded-full ${dotColor}`} />
         {status}
       </div>
     </div>
@@ -24,6 +27,8 @@ export default function SettingsPage({ overview }) {
   const [upstreamSource, setUpstreamSource] = useState(null);
   const [saveState, setSaveState] = useState('idle');
   const [saveMessage, setSaveMessage] = useState('');
+  const redisConnected = Boolean(overview?.redisOnline);
+  const redisFallback = Boolean(overview?.redisFallback);
 
   useEffect(() => {
     securityApi.getUpstream()
@@ -123,9 +128,10 @@ export default function SettingsPage({ overview }) {
             <ServiceCard
               icon={Database}
               label="Redis Telemetry"
-              detail="Required shared state and counters"
-              online={Boolean(overview?.redisOnline)}
-              status={overview?.redisOnline ? 'Connected' : 'Unavailable'}
+              detail={redisConnected ? 'Shared state and counters' : redisFallback ? 'Development in-memory state' : 'Required shared state and counters'}
+              online={redisConnected}
+              warning={redisFallback}
+              status={redisConnected ? 'Connected' : redisFallback ? 'Local fallback' : 'Unavailable'}
             />
           </div>
         </div>
@@ -159,13 +165,40 @@ export default function SettingsPage({ overview }) {
 
         <div className="p-6 rounded-2xl bg-[#0E1422] border border-[#1E293B] space-y-4">
           <h3 className="text-sm font-bold text-white tracking-wide flex items-center gap-2">
-            <Code2 className="w-4 h-4 text-indigo-400" />
-            <span>Application Integration</span>
+            <Package className="w-4 h-4 text-indigo-400" />
+            <span>Install the API Shield npm package</span>
           </h3>
           <p className="text-xs text-slate-400 leading-relaxed">
-            Add your application URL above and send client traffic through <code className="font-mono text-indigo-300">/proxy/*</code>. The gateway forwards the request after evaluation and records the real upstream response. Your users must open the API Shield gateway URL for requests to be inspected.
+            Use the client package when you want the smallest integration change. It sends real application requests through <code className="font-mono text-indigo-300">/proxy/*</code>, so API Shield can evaluate them before forwarding to the protected application.
           </p>
-          <pre className="p-4 rounded-xl bg-[#0A0E1A] border border-[#1E293B] overflow-x-auto text-[11px] text-slate-300"><code>{'curl -H "X-API-Key: $SENTINEL_API_KEY" \\\n  https://gateway.example.com/proxy/v1/resource'}</code></pre>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div>
+              <p className="text-[10px] uppercase tracking-wider font-bold text-slate-500 mb-2">Package name</p>
+              <div className="p-3 rounded-xl bg-[#0A0E1A] border border-[#1E293B] font-mono text-xs text-indigo-300">api-shield-client</div>
+              <p className="text-[10px] uppercase tracking-wider font-bold text-slate-500 mt-4 mb-2">Install</p>
+              <pre className="p-3 rounded-xl bg-[#0A0E1A] border border-[#1E293B] overflow-x-auto text-[11px] text-slate-300"><code>npm install api-shield-client</code></pre>
+              <p className="mt-2 text-[10px] text-slate-500">Local repository: <code className="font-mono text-indigo-300">npm install ../packages/api-shield-client</code></p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-wider font-bold text-slate-500 mb-2">Environment</p>
+              <pre className="p-3 rounded-xl bg-[#0A0E1A] border border-[#1E293B] overflow-x-auto text-[11px] text-slate-300"><code>{'VITE_API_SHIELD_URL=https://gateway.example.com\nVITE_API_SHIELD_CLIENT_KEY=your-client-key'}</code></pre>
+            </div>
+          </div>
+          <pre className="p-4 rounded-xl bg-[#0A0E1A] border border-[#1E293B] overflow-x-auto text-[11px] text-slate-300"><code>{`import createApiShieldClient from 'api-shield-client';
+
+const api = createApiShieldClient({
+  gatewayUrl: import.meta.env.VITE_API_SHIELD_URL,
+  apiKey: import.meta.env.VITE_API_SHIELD_CLIENT_KEY
+});
+
+const response = await api.get('/api/health');
+const data = await response.json();`}</code></pre>
+          <p className="text-[11px] text-slate-400">
+            Publish <code className="font-mono text-indigo-300">api-shield-client</code> to npm before installing it from a separate application. The source package is included in this repository under <code className="font-mono text-indigo-300">packages/api-shield-client</code>.
+          </p>
+          <p className="text-[11px] text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+            Use a client API key only. Never place the dashboard admin key in a frontend application; browser environment values are visible to users.
+          </p>
         </div>
       </div>
     </div>

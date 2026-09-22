@@ -1,0 +1,14 @@
+{
+  "name": "api-shield-client",
+  "version": "0.1.0",
+  "description": "Small fetch client for routing application API traffic through API Shield.",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "files": ["src", "README.md", "LICENSE"],
+  "engines": { "node": ">=18" },
+  "keywords": ["api-security", "api-gateway", "anomaly-detection", "rate-limiting", "api-shield"],
+  "license": "MIT"
+}

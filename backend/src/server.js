@@ -1,6 +1,7 @@
 import app from './app.js';
 import { initRedis } from './config/redis.js';
 import { mlService } from './services/mlService.js';
+import { initMongo } from './config/mongodb.js';
 
 const PORT = process.env.PORT || 5000;
 
@@ -10,11 +11,17 @@ async function startServer() {
   console.log('========================================================');
 
   if (process.env.NODE_ENV === 'production') {
-    const requiredProductionConfig = ['SENTINEL_API_KEYS', 'SENTINEL_ADMIN_API_KEY'];
+    const requiredProductionConfig = ['SENTINEL_API_KEYS', 'JWT_SECRET'];
     const missing = requiredProductionConfig.filter((name) => !process.env[name]);
+    if (!process.env.MONGODB_SRV && !process.env.MONGODB_URI) missing.push('MONGODB_SRV');
     if (missing.length > 0) {
       throw new Error(`Missing required production configuration: ${missing.join(', ')}`);
     }
+  }
+
+  const mongo = await initMongo();
+  if (process.env.NODE_ENV === 'production' && !mongo) {
+    throw new Error('MongoDB is unavailable. Dashboard authentication cannot start.');
   }
 
   // Redis is a required production dependency. The in-memory store is only

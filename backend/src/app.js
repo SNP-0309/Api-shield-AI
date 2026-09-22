@@ -7,8 +7,11 @@ import { randomUUID } from 'node:crypto';
 import protectedRoutes from './routes/protectedRoutes.js';
 import securityRoutes from './routes/securityRoutes.js';
 import proxyRoutes from './routes/proxyRoutes.js';
+import authRoutes from './routes/authRoutes.js';
 import { requireApiKey } from './middleware/apiKeyMiddleware.js';
+import { requireDashboardAuth } from './middleware/authMiddleware.js';
 import { isRedisOnline } from './config/redis.js';
+import { isMongoOnline } from './config/mongodb.js';
 import { mlService } from './services/mlService.js';
 
 const app = express();
@@ -85,13 +88,17 @@ app.get('/health', (req, res) => {
 
 app.get('/ready', async (req, res) => {
   const mlReady = await mlService.checkHealth();
-  const ready = isRedisOnline() || process.env.ALLOW_IN_MEMORY_FALLBACK === 'true';
+  const redisReady = isRedisOnline() || process.env.ALLOW_IN_MEMORY_FALLBACK === 'true';
+  const ready = redisReady && isMongoOnline();
   res.status(ready ? 200 : 503).json({
     status: ready ? 'ready' : 'not_ready',
     service: 'API Shield Gateway',
-    dependencies: { redis: isRedisOnline(), ml: mlReady }
+    dependencies: { redis: isRedisOnline(), mongo: isMongoOnline(), ml: mlReady }
   });
 });
+
+// Dashboard authentication is separate from client API-key authentication.
+app.use('/auth', authRoutes);
 
 // The reference endpoint is protected and can be used for connectivity checks.
 app.use('/api', requireApiKey(), protectedRoutes);
@@ -100,7 +107,7 @@ app.use('/api', requireApiKey(), protectedRoutes);
 app.use('/proxy', requireApiKey(), proxyRoutes);
 
 // Mount Security & Dashboard observability routes
-app.use('/security', requireApiKey({ admin: true }), securityRoutes);
+app.use('/security', requireDashboardAuth(), securityRoutes);
 
 // 404 Handler
 app.use((req, res) => {

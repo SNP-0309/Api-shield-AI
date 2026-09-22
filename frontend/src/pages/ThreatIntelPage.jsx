@@ -1,172 +1,209 @@
-import React from 'react';
-import { 
-  ShieldAlert, 
-  Clock, 
-  Search, 
-  Key, 
-  Zap, 
-  Compass, 
-  Cpu, 
+import React, { useMemo, useState } from 'react';
+import {
+  Activity,
+  AlertTriangle,
+  BarChart3,
+  CheckCircle2,
+  Clock3,
+  Compass,
+  Cpu,
+  KeyRound,
+  Search,
+  ShieldAlert,
+  ShieldCheck,
+  Target,
+  Zap
 } from 'lucide-react';
+import ClientDrawer from '../components/ClientDrawer';
+import { formatTimeAgo } from '../utils/statusUtils';
 
 const THREAT_PROFILES = [
   {
     id: 'low_and_slow',
-    title: 'Low-and-Slow Stealth Bot',
-    icon: Clock,
-    color: 'text-rose-400',
-    borderColor: 'border-rose-500/30',
-    bgBadge: 'bg-rose-500/10 text-rose-400 border-rose-500/20',
-    description: 'Sends requests at low frequency (<15 req/min) deliberately staying below standard thresholds, but exhibits machine-precise interval standard deviation (<0.04s) and repeated targeting.',
-    detectionMechanism: 'Flagged via request interval variance analysis and Isolation Forest outlier scoring.'
+    title: 'Low-and-slow bot',
+    icon: Clock3,
+    tone: 'blue',
+    description: 'Machine-precise timing and repeated access designed to stay below obvious rate thresholds.',
+    detectionMechanism: 'Interval variance, endpoint repetition, and sliding-window velocity.'
   },
   {
     id: 'scraper',
-    title: 'Automated API Scraper',
+    title: 'Automated scraper',
     icon: Search,
-    color: 'text-amber-400',
-    borderColor: 'border-amber-500/30',
-    bgBadge: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-    description: 'Systematically crawls multiple endpoints in rapid sequential succession with high GET ratio (>95%) and uniform payload consumption.',
-    detectionMechanism: 'Identified by elevated endpoint entropy (>3.0) and high request density in sliding window.'
+    tone: 'yellow',
+    description: 'Systematically crawls resources with a high GET ratio and limited navigation variety.',
+    detectionMechanism: 'Endpoint entropy, request density, and repetitive resource access.'
   },
   {
     id: 'brute_force',
-    title: 'Credential Stuffing Bot',
-    icon: Key,
-    color: 'text-rose-400',
-    borderColor: 'border-rose-500/30',
-    bgBadge: 'bg-rose-500/10 text-rose-400 border-rose-500/20',
-    description: 'Repeatedly hits authentication endpoints with varying credentials resulting in elevated 401/403 failure rates (>50%) and 100% POST ratio.',
-    detectionMechanism: 'Flagged by failure-rate velocity spike and single-endpoint repetition ratio (>0.95).'
+    title: 'Credential stuffing',
+    icon: KeyRound,
+    tone: 'red',
+    description: 'Repeated authentication attempts that create an elevated failure rate on one route.',
+    detectionMechanism: 'POST ratio, repeated login endpoint, and 4xx response rate.'
   },
   {
     id: 'burst_attack',
-    title: 'High-Velocity Burst Bot',
+    title: 'High-velocity burst',
     icon: Zap,
-    color: 'text-orange-400',
-    borderColor: 'border-orange-500/30',
-    bgBadge: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
-    description: 'Unloads rapid-fire batches of concurrent requests in sub-second intervals (<100ms) attempting to exhaust server compute or race database transactions.',
-    detectionMechanism: 'Detected by burst score calculation (fraction of sub-250ms arrivals) and sudden velocity surges.'
+    tone: 'orange',
+    description: 'Rapid-fire request bursts that can exhaust application or database capacity.',
+    detectionMechanism: 'Sub-250ms arrivals, burst score, and current request velocity.'
   },
   {
     id: 'probe',
-    title: 'Endpoint Vulnerability Prober',
+    title: 'Endpoint prober',
     icon: Compass,
-    color: 'text-purple-400',
-    borderColor: 'border-purple-500/30',
-    bgBadge: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
-    description: 'Scans non-existent sensitive administrative or debug paths (/api/.env, /api/actuator, /api/backup) generating rapid 404 response anomalies.',
-    detectionMechanism: 'Identified by abnormal 404 response proportion and high unique unknown endpoint ratio.'
+    tone: 'purple',
+    description: 'Scans missing or sensitive paths and produces a high proportion of failed responses.',
+    detectionMechanism: 'Error rate, endpoint diversity, and unknown route behavior.'
   },
   {
     id: 'automation',
-    title: 'Suspicious Headless Automation',
+    title: 'Headless automation',
     icon: Cpu,
-    color: 'text-cyan-400',
-    borderColor: 'border-cyan-500/30',
-    bgBadge: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20',
-    description: 'Employs automated headless browser frameworks (Puppeteer, Selenium, Scrapy) or rotating User-Agent headers with unnatural navigation sequences.',
-    detectionMechanism: 'Flagged by User-Agent churn rate and multi-dimensional feature space deviations.'
+    tone: 'teal',
+    description: 'Automated clients with unnatural navigation or changing user-agent signals.',
+    detectionMechanism: 'User-agent churn and multi-feature model deviation.'
   }
 ];
 
+const EMPTY_CLIENTS = [];
+
+function profileMatches(profileId, behavior = '') {
+  const value = behavior.toLowerCase();
+  return (profileId === 'low_and_slow' && value.includes('slow'))
+    || (profileId === 'scraper' && value.includes('scraper'))
+    || (profileId === 'brute_force' && value.includes('brute'))
+    || (profileId === 'burst_attack' && value.includes('burst'))
+    || (profileId === 'probe' && value.includes('probing'))
+    || (profileId === 'automation' && value.includes('automation'));
+}
+
+function levelCount(clients, level) {
+  return clients.filter((client) => client.status === level).length;
+}
+
+function riskTone(status) {
+  if (status === 'CRITICAL') return 'critical';
+  if (status === 'HIGH_RISK') return 'high';
+  if (status === 'SUSPICIOUS') return 'suspicious';
+  return 'safe';
+}
+
 export default function ThreatIntelPage({ clients }) {
-  // Derive real statistics from active clients
-  const getStats = (profileId) => {
-    let affected = 0;
-    let totalRisk = 0;
+  const [selectedClientId, setSelectedClientId] = useState(null);
+  const activeClients = Array.isArray(clients) ? clients : EMPTY_CLIENTS;
 
-    (clients || []).forEach((c) => {
-      const b = (c.dominantBehavior || '').toLowerCase();
-      let match = false;
-      if (profileId === 'low_and_slow' && b.includes('slow')) match = true;
-      if (profileId === 'scraper' && b.includes('scraper')) match = true;
-      if (profileId === 'brute_force' && b.includes('brute')) match = true;
-      if (profileId === 'burst_attack' && b.includes('burst')) match = true;
-      if (profileId === 'probe' && b.includes('probing')) match = true;
-      if (profileId === 'automation' && b.includes('automation')) match = true;
-
-      if (match) {
-        affected++;
-        totalRisk += c.riskScore || 0;
-      }
+  const intelligence = useMemo(() => {
+    const counts = {
+      SAFE: levelCount(activeClients, 'SAFE'),
+      SUSPICIOUS: levelCount(activeClients, 'SUSPICIOUS'),
+      HIGH_RISK: levelCount(activeClients, 'HIGH_RISK'),
+      CRITICAL: levelCount(activeClients, 'CRITICAL')
+    };
+    const totalRisk = activeClients.reduce((total, client) => total + Number(client.riskScore || 0), 0);
+    const averageRisk = activeClients.length ? totalRisk / activeClients.length : 0;
+    const elevated = counts.SUSPICIOUS + counts.HIGH_RISK + counts.CRITICAL;
+    const pressure = activeClients.length ? Math.round((elevated / activeClients.length) * 100) : 0;
+    const priorityClients = [...activeClients].sort((a, b) => Number(b.riskScore || 0) - Number(a.riskScore || 0)).slice(0, 5);
+    const profileStats = THREAT_PROFILES.map((profile) => {
+      const matched = activeClients.filter((client) => profileMatches(profile.id, client.dominantBehavior));
+      const total = matched.reduce((sum, client) => sum + Number(client.riskScore || 0), 0);
+      return { ...profile, affected: matched.length, averageRisk: matched.length ? total / matched.length : 0 };
     });
-
-    const avgRisk = affected > 0 ? (totalRisk / affected).toFixed(2) : '—';
-    const detections = affected;
-
-    return { affected, avgRisk, detections };
-  };
+    return { counts, averageRisk, pressure, priorityClients, profileStats, elevated };
+  }, [activeClients]);
 
   return (
-    <div className="p-8 space-y-6 max-w-[1600px] mx-auto">
-      <div>
-        <h2 className="text-xl font-extrabold text-white tracking-tight flex items-center gap-2">
-          <ShieldAlert className="w-5 h-5 text-orange-400" />
-          <span>Threat Intelligence Profiles</span>
-        </h2>
-        <p className="text-xs text-slate-400 mt-1">
-          Behavioral attack taxonomies classified by API Shield Isolation Forest & Risk Engine.
-        </p>
+    <div className="threat-page">
+      <div className="threat-page-header">
+        <div>
+          <span className="threat-eyebrow"><ShieldAlert size={14} /> Security intelligence</span>
+          <h1>Threat intelligence</h1>
+          <p>Understand why API Shield is flagging clients and where the current pressure is coming from.</p>
+        </div>
+        <div className="threat-header-status"><span /> Live sliding-window analysis</div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {THREAT_PROFILES.map((tp) => {
-          const Icon = tp.icon;
-          const stats = getStats(tp.id);
+      <section className="threat-hero-card">
+        <div className="threat-hero-copy">
+          <div className="threat-hero-label"><Target size={15} /> Current threat posture</div>
+          <div className="threat-hero-number">{intelligence.pressure}<small>%</small></div>
+          <p>{intelligence.elevated ? `${intelligence.elevated} of ${activeClients.length} active clients need attention.` : 'No elevated-risk clients are active in the current window.'}</p>
+          <div className="threat-hero-note"><Activity size={14} /> Updated from real gateway traffic</div>
+        </div>
+        <div className="threat-hero-breakdown">
+          {[
+            ['SAFE', intelligence.counts.SAFE, 'safe'],
+            ['SUSPICIOUS', intelligence.counts.SUSPICIOUS, 'suspicious'],
+            ['HIGH RISK', intelligence.counts.HIGH_RISK, 'high'],
+            ['CRITICAL', intelligence.counts.CRITICAL, 'critical']
+          ].map(([label, count, tone]) => (
+            <div key={label} className="threat-hero-stat"><span className={`threat-tone-dot ${tone}`} /><strong>{count}</strong><small>{label}</small></div>
+          ))}
+        </div>
+      </section>
 
-          return (
-            <div
-              key={tp.id}
-              className={`p-6 rounded-2xl bg-[#0E1422] border ${tp.borderColor} flex flex-col justify-between space-y-4 hover:bg-[#121A2D] transition-all`}
-            >
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="w-10 h-10 rounded-xl bg-slate-900 border border-[#1E293B] flex items-center justify-center">
-                    <Icon className={`w-5 h-5 ${tp.color}`} />
-                  </div>
-                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${tp.bgBadge}`}>
-                    DETECTION RULE
-                  </span>
-                </div>
+      <section className="threat-summary-grid">
+        <article className="threat-summary-card"><span className="threat-summary-icon blue"><ShieldCheck size={17} /></span><div><small>Active clients</small><strong>{activeClients.length}</strong><span>60-second window</span></div></article>
+        <article className="threat-summary-card"><span className="threat-summary-icon yellow"><AlertTriangle size={17} /></span><div><small>Average risk</small><strong>{intelligence.averageRisk.toFixed(2)}</strong><span>Normalized score</span></div></article>
+        <article className="threat-summary-card"><span className="threat-summary-icon purple"><BarChart3 size={17} /></span><div><small>Threat patterns</small><strong>{intelligence.profileStats.filter((profile) => profile.affected > 0).length}</strong><span>Observed profiles</span></div></article>
+      </section>
 
-                <div>
-                  <h3 className="text-sm font-bold text-white tracking-wide">{tp.title}</h3>
-                  <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-                    {tp.description}
-                  </p>
-                </div>
-              </div>
+      <section className="threat-overview-grid">
+        <article className="threat-panel threat-distribution-panel">
+          <div className="threat-panel-heading"><div><span className="threat-panel-kicker">Risk distribution</span><h2>Client posture</h2></div><span className="threat-panel-caption">Current window</span></div>
+          <div className="threat-stacked-bar" aria-label="Risk distribution">
+            {['SAFE', 'SUSPICIOUS', 'HIGH_RISK', 'CRITICAL'].map((level) => <span key={level} className={riskTone(level)} style={{ width: `${activeClients.length ? (intelligence.counts[level] / activeClients.length) * 100 : 0}%` }} />)}
+          </div>
+          <div className="threat-distribution-list">
+            {[
+              ['SAFE', intelligence.counts.SAFE, 'safe', 'Normal client behavior'],
+              ['SUSPICIOUS', intelligence.counts.SUSPICIOUS, 'suspicious', 'Needs observation'],
+              ['HIGH RISK', intelligence.counts.HIGH_RISK, 'high', 'Rate limited'],
+              ['CRITICAL', intelligence.counts.CRITICAL, 'critical', 'Blocked by gateway']
+            ].map(([label, count, tone, description]) => (
+              <div key={label} className="threat-distribution-row"><span className={`threat-tone-dot ${tone}`} /><div><strong>{label}</strong><small>{description}</small></div><b>{count}</b></div>
+            ))}
+          </div>
+        </article>
 
-              <div className="space-y-3 pt-3 border-t border-[#1E293B]">
-                {/* Stats Row */}
-                <div className="grid grid-cols-3 gap-2 text-center">
-                  <div className="p-2 rounded-lg bg-[#0A0E1A] border border-[#1E293B]">
-                    <div className="text-[10px] text-slate-400">Active Clients</div>
-                    <div className="text-xs font-mono font-bold text-white mt-0.5">{stats.detections}</div>
-                  </div>
-                  <div className="p-2 rounded-lg bg-[#0A0E1A] border border-[#1E293B]">
-                    <div className="text-[10px] text-slate-400">Avg Risk</div>
-                    <div className={`text-xs font-mono font-bold mt-0.5 ${tp.color}`}>{stats.avgRisk}</div>
-                  </div>
-                  <div className="p-2 rounded-lg bg-[#0A0E1A] border border-[#1E293B]">
-                    <div className="text-[10px] text-slate-400">Affected</div>
-                    <div className="text-xs font-mono font-bold text-white mt-0.5">{stats.affected}</div>
-                  </div>
-                </div>
-
-                {/* Detection mechanism pill */}
-                <div className="text-[11px] text-slate-400 bg-[#0A0E1A] p-2.5 rounded-lg border border-[#1E293B]/60">
-                  <span className="font-semibold text-slate-300">Defense Logic: </span>
-                  {tp.detectionMechanism}
-                </div>
-              </div>
+        <article className="threat-panel threat-priority-panel">
+          <div className="threat-panel-heading"><div><span className="threat-panel-kicker">Priority queue</span><h2>Clients to review</h2></div><span className="threat-panel-caption">Top risk</span></div>
+          {intelligence.priorityClients.length ? (
+            <div className="threat-priority-list">
+              {intelligence.priorityClients.map((client) => (
+                <button type="button" key={client.clientId} className="threat-priority-row" onClick={() => setSelectedClientId(client.clientId)}>
+                  <span className={`threat-priority-icon ${riskTone(client.status)}`}>{client.status === 'CRITICAL' ? <ShieldAlert size={15} /> : <AlertTriangle size={15} />}</span>
+                  <span className="threat-priority-identity"><strong>{client.clientId}</strong><small>{client.dominantBehavior || 'Behavior under analysis'} · {formatTimeAgo(client.lastSeen)}</small></span>
+                  <span className={`threat-priority-score ${riskTone(client.status)}`}>{Number(client.riskScore || 0).toFixed(2)}</span>
+                </button>
+              ))}
             </div>
-          );
-        })}
-      </div>
+          ) : <div className="threat-empty-state"><CheckCircle2 size={21} /><strong>No active threats</strong><span>Route traffic through /proxy/* to begin collecting intelligence.</span></div>}
+        </article>
+      </section>
+
+      <section className="threat-profiles-section">
+        <div className="threat-section-heading"><div><span className="threat-panel-kicker">Detection library</span><h2>Behavioral threat profiles</h2></div><p>These profiles explain the signals used by the rules engine and Isolation Forest model.</p></div>
+        <div className="threat-profile-grid">
+          {intelligence.profileStats.map((profile) => {
+            const Icon = profile.icon;
+            return (
+              <article key={profile.id} className={`threat-profile-card ${profile.tone}`}>
+                <div className="threat-profile-top"><span className="threat-profile-icon"><Icon size={17} /></span><span className="threat-profile-tag">PROFILE</span></div>
+                <h3>{profile.title}</h3>
+                <p>{profile.description}</p>
+                <div className="threat-profile-metrics"><span><small>Active</small><strong>{profile.affected}</strong></span><span><small>Avg risk</small><strong>{profile.affected ? profile.averageRisk.toFixed(2) : '—'}</strong></span></div>
+                <div className="threat-profile-logic"><span>Detection logic</span>{profile.detectionMechanism}</div>
+              </article>
+            );
+          })}
+        </div>
+      </section>
+
+      <ClientDrawer clientId={selectedClientId} onClose={() => setSelectedClientId(null)} />
     </div>
   );
 }

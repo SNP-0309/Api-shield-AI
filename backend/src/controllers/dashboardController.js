@@ -46,6 +46,7 @@ export const dashboardController = {
       const metrics = await redisService.getMetrics();
       const isMlOnline = await mlService.checkHealth();
       const isRedisOnline = redisService.isOnline();
+      const redisFallback = redisService.isUsingFallback();
 
       let safeCount = 0;
       let suspiciousCount = 0;
@@ -77,7 +78,8 @@ export const dashboardController = {
         blockedRequests: metrics.blockedRequests,
         averageRisk,
         mlEngineOnline: isMlOnline,
-        redisOnline: isRedisOnline
+        redisOnline: isRedisOnline,
+        redisFallback
       });
     } catch (err) {
       console.error('[DashboardController] getOverview error:', err.message);

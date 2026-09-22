@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
+import { Outlet } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import Navbar from '../components/Navbar';
 import { securityApi } from '../services/api';
 
-export default function DashboardLayout() {
+export default function DashboardLayout({ user }) {
   const location = useLocation();
   const [overview, setOverview] = useState(null);
   const [clients, setClients] = useState([]);
@@ -36,42 +37,26 @@ export default function DashboardLayout() {
     return () => clearInterval(interval);
   }, []);
 
-  // Compute title based on current path
-  const getPageInfo = () => {
-    const p = location.pathname;
-    if (p.includes('/traffic')) {
-      return { title: 'Live Request Telemetry', subtitle: 'Real-time HTTP traffic and adaptive rate actions' };
-    }
-    if (p.includes('/clients')) {
-      return { title: 'Client Behavioral Registry', subtitle: 'Active clients tracked across 60-second sliding windows' };
-    }
-    if (p.includes('/threat-intel')) {
-      return { title: 'Threat Intelligence Profiles', subtitle: 'Classified behavioral attack patterns and affected endpoints' };
-    }
-    if (p.includes('/architecture')) {
-      return { title: 'System Architecture', subtitle: 'End-to-end request lifecycle and rate clamping pipeline' };
-    }
-    if (p.includes('/settings')) {
-      return { title: 'Settings & Configuration', subtitle: 'Service health, enforcement policy, and deployment configuration' };
-    }
-    return { title: 'Autonomous API Security Operations', subtitle: 'Behavior-aware anomaly detection and adaptive rate limiting' };
-  };
-
-  const pageInfo = getPageInfo();
+  const pageInfo = location.pathname.includes('/traffic')
+    ? { title: 'Live request telemetry', subtitle: 'Monitor every request crossing the gateway' }
+    : location.pathname.includes('/clients')
+      ? { title: 'Client behavior', subtitle: 'Review active client profiles and risk scores' }
+      : location.pathname.includes('/threat-intel')
+        ? { title: 'Threat intelligence', subtitle: 'Understand the patterns behind detected risk' }
+        : location.pathname.includes('/settings')
+          ? { title: 'Settings', subtitle: 'Configure your protected application and services' }
+          : { title: 'Realtime overview', subtitle: 'Behavior-aware protection for your API' };
 
   return (
-    <div className="analytics-shell flex min-h-screen bg-[#080C14] text-slate-200">
-      <Sidebar overview={overview} />
-      
-      <div className="flex-1 flex flex-col min-w-0">
-        <Navbar
-          title={pageInfo.title}
-          subtitle={pageInfo.subtitle}
-        />
-        
-        <main className="flex-1 overflow-y-auto">
-          <Outlet context={{ overview, clients, traffic, timeseries, refetch: fetchData }} />
-        </main>
+    <div className="dashboard-canvas min-h-screen p-3 sm:p-5 lg:p-8">
+      <div className="dashboard-frame dashboard-frame-analytics min-h-[calc(100vh-1.5rem)] sm:min-h-[calc(100vh-2.5rem)] lg:min-h-[calc(100vh-4rem)] overflow-hidden rounded-[24px] sm:rounded-[30px] flex">
+        <Sidebar overview={overview} />
+        <div className="flex-1 min-w-0 flex flex-col">
+          <Navbar user={user} overview={overview} title={pageInfo.title} subtitle={pageInfo.subtitle} />
+          <main className="dashboard-content overflow-y-auto">
+            <Outlet context={{ overview, clients, traffic, timeseries, refetch: fetchData }} />
+          </main>
+        </div>
       </div>
     </div>
   );

@@ -2,10 +2,7 @@ import React, { useState } from 'react';
 import { 
   Activity, 
   Users, 
-  ShieldAlert, 
   Slash, 
-  Cpu, 
-  TrendingUp, 
 } from 'lucide-react';
 import { 
   ResponsiveContainer, 
@@ -55,110 +52,54 @@ export default function OverviewPage({ overview, clients, timeseries, onClientCl
   return (
     <div className="p-6 lg:p-8 space-y-8 max-w-[1600px] mx-auto">
       
-      {/* Top Header */}
-      <div>
-        <h2 className="text-xl font-extrabold text-white tracking-tight flex items-center gap-2">
-          <span>Autonomous API Security</span>
-          <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono">
-            Active Protection
-          </span>
-        </h2>
-        <p className="text-xs text-slate-400 mt-1">
-          Behavior-aware anomaly detection and adaptive rate limiting in real time.
-        </p>
+      {/* Reference-inspired command-center hero */}
+      <div className="grid grid-cols-1 xl:grid-cols-[1.18fr_0.82fr] gap-6 items-end">
+        <div className="px-1 sm:px-3 pt-2">
+          <p className="text-[11px] uppercase tracking-[0.22em] text-[#8b6c1e] font-semibold">Security operations / live command center</p>
+          <h2 className="mt-3 text-4xl sm:text-5xl font-light tracking-[-0.06em] text-[#20201e]">Welcome back, API Shield</h2>
+          <p className="mt-4 max-w-xl text-sm leading-6 text-[#7c786f]">
+            Monitor real traffic, understand client behavior, and stop suspicious API activity before it reaches your application.
+          </p>
+
+          <div className="mt-7 max-w-2xl">
+            <div className="flex items-center justify-between text-[11px] font-medium text-[#77736a]">
+              <span>Protection coverage</span>
+              <span className="text-[#4f8b68]">Live monitoring</span>
+            </div>
+            <div className="mt-2 h-3 rounded-full bg-[#e4dfd2] p-0.5 overflow-hidden">
+              <div className="h-full w-[78%] rounded-full bg-[#2d2d2b] relative overflow-hidden">
+                <span className="absolute inset-y-0 right-0 w-1/3 bg-[#f4cd4d]" />
+              </div>
+            </div>
+            <div className="mt-2 flex items-center gap-5 text-[10px] text-[#8a857b]">
+              <span><i className="inline-block w-2 h-2 rounded-full bg-[#2d2d2b] mr-1" />Observed traffic</span>
+              <span><i className="inline-block w-2 h-2 rounded-full bg-[#f4cd4d] mr-1" />Threat review</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-3 gap-3">
+          {[
+            ['Requests', overview?.totalRequests || 0, Activity],
+            ['Clients', overview?.activeClients || 0, Users],
+            ['Blocked', overview?.blockedRequests || 0, Slash]
+          ].map(([label, value, Icon]) => (
+            <div key={label} className="reference-stat-card">
+              <div className="flex items-center justify-between text-[#89857b]">
+                <span className="text-[11px]">{label}</span>
+                <Icon className="w-3.5 h-3.5" />
+              </div>
+              <div className="mt-4 text-3xl sm:text-4xl font-light tracking-[-0.06em] text-[#20201e]">{value}</div>
+              <div className="mt-1 text-[10px] text-[#a09b90]">Live gateway data</div>
+            </div>
+          ))}
+        </div>
       </div>
 
-      {/* Bento Top Metric Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-        
-        {/* Total Requests */}
-        <div className="p-4 rounded-xl bg-[#0E1422] border border-[#1E293B] hover:border-[#2D3D58] transition-all">
-          <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="text-xs font-medium">Total Requests</span>
-            <Activity className="w-4 h-4 text-indigo-400" />
-          </div>
-          <div className="text-2xl font-bold font-mono text-white">
-            {overview?.totalRequests || 0}
-          </div>
-          <div className="text-[11px] text-slate-500 mt-1 flex items-center gap-1">
-            <TrendingUp className="w-3 h-3 text-emerald-400" />
-            <span>Recorded by gateway</span>
-          </div>
-        </div>
-
-        {/* Active Clients */}
-        <div className="p-4 rounded-xl bg-[#0E1422] border border-[#1E293B] hover:border-[#2D3D58] transition-all">
-          <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="text-xs font-medium">Active Clients</span>
-            <Users className="w-4 h-4 text-cyan-400" />
-          </div>
-          <div className="text-2xl font-bold font-mono text-white">
-            {overview?.activeClients || 0}
-          </div>
-          <div className="text-[11px] text-slate-500 mt-1">
-            <span>Sliding window sessions</span>
-          </div>
-        </div>
-
-        {/* Threats Detected */}
-        <div className="p-4 rounded-xl bg-[#0E1422] border border-[#1E293B] hover:border-[#2D3D58] transition-all">
-          <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="text-xs font-medium">Threats Detected</span>
-            <ShieldAlert className="w-4 h-4 text-orange-400" />
-          </div>
-          <div className="text-2xl font-bold font-mono text-orange-400">
-            {threatCount}
-          </div>
-          <div className="text-[11px] text-slate-500 mt-1">
-            <span>Risk score ≥ 0.30</span>
-          </div>
-        </div>
-
-        {/* Blocked Requests */}
-        <div className="p-4 rounded-xl bg-[#0E1422] border border-[#1E293B] hover:border-[#2D3D58] transition-all">
-          <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="text-xs font-medium">Blocked Requests</span>
-            <Slash className="w-4 h-4 text-rose-400" />
-          </div>
-          <div className="text-2xl font-bold font-mono text-rose-400">
-            {overview?.blockedRequests || 0}
-          </div>
-          <div className="text-[11px] text-slate-500 mt-1">
-            <span>HTTP 429 throttles</span>
-          </div>
-        </div>
-
-        {/* Average Risk */}
-        <div className="p-4 rounded-xl bg-[#0E1422] border border-[#1E293B] hover:border-[#2D3D58] transition-all">
-          <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="text-xs font-medium">Average Risk</span>
-            <TrendingUp className="w-4 h-4 text-indigo-400" />
-          </div>
-          <div className="text-2xl font-bold font-mono text-white">
-            {(overview?.averageRisk ?? 0).toFixed(2)}
-          </div>
-          <div className="text-[11px] text-slate-500 mt-1">
-            <span>Normalized (0.0 - 1.0)</span>
-          </div>
-        </div>
-
-        {/* ML Engine Status */}
-        <div className="p-4 rounded-xl bg-[#0E1422] border border-[#1E293B] hover:border-[#2D3D58] transition-all">
-          <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="text-xs font-medium">ML Engine</span>
-            <Cpu className={`w-4 h-4 ${overview?.mlEngineOnline ? 'text-emerald-400' : 'text-rose-400'}`} />
-          </div>
-          <div className="text-sm font-bold flex items-center gap-2 mt-1">
-            <span className={`w-2.5 h-2.5 rounded-full ${overview?.mlEngineOnline ? 'bg-emerald-400 shadow-sm shadow-emerald-400 animate-pulse' : 'bg-rose-400'}`} />
-            <span className={overview?.mlEngineOnline ? 'text-emerald-400' : 'text-rose-400'}>
-              {overview?.mlEngineOnline ? 'Ready' : 'Unavailable'}
-            </span>
-          </div>
-          <div className="text-[11px] text-slate-500 mt-1">
-            <span>{overview?.mlEngineOnline ? 'Model-backed decisions' : 'Degraded decisions active'}</span>
-          </div>
-        </div>
-
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="reference-mini-card"><span>Threats detected</span><strong className="text-[#b97524]">{threatCount}</strong><small>Risk score ≥ 0.30</small></div>
+        <div className="reference-mini-card"><span>Average risk</span><strong>{(overview?.averageRisk ?? 0).toFixed(2)}</strong><small>Normalized score from 0.0 to 1.0</small></div>
+        <div className="reference-mini-card"><span>ML engine</span><strong className={overview?.mlEngineOnline ? 'text-[#4f8b68]' : 'text-[#c65255]'}>{overview?.mlEngineOnline ? 'Ready' : 'Offline'}</strong><small>{overview?.mlEngineOnline ? 'Model-backed decisions' : 'Degraded decisions active'}</small></div>
       </div>
 
       {/* Middle Grid: Live Traffic Graph & Threat Donut */}

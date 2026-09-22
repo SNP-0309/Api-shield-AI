@@ -13,6 +13,13 @@ export const redisService = {
     return isRedisOnline();
   },
 
+  isUsingFallback() {
+    return !isRedisOnline() && (
+      process.env.NODE_ENV !== 'production'
+      || process.env.ALLOW_IN_MEMORY_FALLBACK === 'true'
+    );
+  },
+
   async getUpstreamUrl() {
     const configuredFallback = String(process.env.UPSTREAM_URL || '').trim() || null;
     const { client } = getRedisClient();

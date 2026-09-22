@@ -1,12 +1,12 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useOutletContext } from 'react-router-dom';
 import LandingPage from './pages/LandingPage';
-import DashboardLayout from './layouts/DashboardLayout';
+import AuthPage from './pages/AuthPage';
+import ProtectedRoute from './components/ProtectedRoute';
 import OverviewPage from './pages/OverviewPage';
 import LiveTrafficPage from './pages/LiveTrafficPage';
 import ClientsPage from './pages/ClientsPage';
 import ThreatIntelPage from './pages/ThreatIntelPage';
-import ArchitecturePage from './pages/ArchitecturePage';
 import SettingsPage from './pages/SettingsPage';
 
 // Context consumer wrappers
@@ -42,13 +42,16 @@ export default function App() {
         {/* Landing Page */}
         <Route path="/" element={<LandingPage />} />
 
+        {/* Dashboard authentication */}
+        <Route path="/login" element={<AuthPage mode="login" />} />
+        <Route path="/register" element={<AuthPage mode="register" />} />
+
         {/* SaaS Cybersecurity Dashboard */}
-        <Route path="/dashboard" element={<DashboardLayout />}>
+        <Route path="/dashboard" element={<ProtectedRoute />}>
           <Route index element={<OverviewWrapper />} />
           <Route path="traffic" element={<LiveTrafficWrapper />} />
           <Route path="clients" element={<ClientsWrapper />} />
           <Route path="threat-intel" element={<ThreatIntelWrapper />} />
-          <Route path="architecture" element={<ArchitecturePage />} />
           <Route path="settings" element={<SettingsWrapper />} />
         </Route>
 

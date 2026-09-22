@@ -6,6 +6,8 @@ This guide tests API Shield with a public test API. It does not add demo data to
 
 Start the ML service, backend, and frontend as described in the README. Redis is recommended because it keeps the telemetry and client history. For local testing without Redis, set `ALLOW_IN_MEMORY_FALLBACK=true` in `.env`.
 
+Before opening the dashboard, configure `MONGODB_SRV` and a 32-character-or-longer `JWT_SECRET`. Set `ALLOW_DASHBOARD_SIGNUP=true` once, open `http://localhost:5173/register`, create the first account, then set it back to `false` and restart the backend. Sign in at `/login` before reviewing the dashboard. The JWT is stored in an HttpOnly cookie.
+
 In the API Shield dashboard, open **Settings → Protected Application** and save:
 
 ```text
